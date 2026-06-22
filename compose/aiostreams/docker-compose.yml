@@ -1,0 +1,15 @@
+services:
+  aiostreams:
+    image: ghcr.io/viren070/aiostreams:latest
+    container_name: aiostreams
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 192.168.0.1
+    environment:
+      - SECRET_KEY=REPLACE_ME  # generate with: openssl rand -hex 32
+      - BASE_URL=http://htpc.local:3000
+    volumes:
+      - ./data:/app/data

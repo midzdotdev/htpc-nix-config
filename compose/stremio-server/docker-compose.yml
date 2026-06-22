@@ -1,0 +1,10 @@
+services:
+  stremio-server:
+    image: stremio/server:latest
+    container_name: stremio-server
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - NO_CORS=1
+    volumes:
+      - ./cache:/root/.stremio-server
