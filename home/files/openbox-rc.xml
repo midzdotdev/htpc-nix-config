@@ -751,14 +751,27 @@
 
   <application class="Stremio">
     <decor>no</decor>
+    <position force="yes">
+      <monitor>1</monitor>
+    </position>
     <fullscreen>yes</fullscreen>
     <focus>yes</focus>
   </application>
 
   <application title="OpenGL renderer">
     <decor>no</decor>
+    <position force="yes">
+      <monitor>1</monitor>
+    </position>
     <fullscreen>yes</fullscreen>
     <layer>above</layer>
+  </application>
+
+  <application class="XTerm">
+    <position force="yes">
+      <monitor>2</monitor>
+    </position>
+    <focus>yes</focus>
   </application>
 </applications>
 

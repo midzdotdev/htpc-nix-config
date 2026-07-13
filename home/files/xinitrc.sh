@@ -8,11 +8,20 @@ xset s noblank
 # Hide the mouse cursor when idle
 unclutter -idle 1 &
 
-# HTPC-mode display: only use HDMI to the TV, ignore the built-in laptop
-# screen. X.org syncs all page-flips to the primary CRTC; mixing two
-# monitors at different refresh rates (eDP 120Hz vs HDMI 60Hz) causes
-# the non-primary one to tear permanently. Single output = clean vsync.
-xrandr --output HDMI-1 --primary --auto --output eDP-1 --off
+# Display layout:
+#   - HDMI + eDP: TV shows Stremio/AirPlay (primary, tear-free), laptop
+#     panel shows a terminal on the right. Both forced to 60Hz to keep the
+#     refresh-rate mismatch (eDP native 120Hz vs HDMI 60Hz) from tearing
+#     the secondary output.
+#   - eDP only: single output, standard.
+if xrandr | grep -q '^HDMI-1 connected'; then
+  xrandr --output HDMI-1 --primary --mode 1920x1080 --rate 60 --pos 0x0 \
+         --output eDP-1 --mode 1920x1080 --rate 60 --pos 1920x0
+  # Terminal on the built-in laptop panel (eDP-1 spans x=1920..3839).
+  (sleep 3; xterm -geometry 130x40+1970+80 -fa Monospace -fs 12 -T Terminal >/dev/null 2>&1 &) &
+else
+  xrandr --output eDP-1 --primary --auto --output HDMI-1 --off
+fi
 
 # Give docker services (aiostreams, stremio-server) a moment to come up
 sleep 4
