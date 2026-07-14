@@ -23,6 +23,18 @@ else
   xrandr --output eDP-1 --primary --auto --output HDMI-1 --off
 fi
 
+# Force audio out over HDMI. The HDMI profile can be reported as
+# "unavailable" by ALSA at boot before the TV's ELD is picked up, so retry
+# for up to ~15s until it takes.
+(
+  for i in $(seq 1 15); do
+    pactl set-card-profile alsa_card.pci-0000_00_1f.3 output:hdmi-stereo 2>/dev/null && \
+      pactl set-default-sink alsa_output.pci-0000_00_1f.3.hdmi-stereo 2>/dev/null && \
+      break
+    sleep 1
+  done
+) &
+
 # Give docker services (aiostreams, stremio-server) a moment to come up
 sleep 4
 
