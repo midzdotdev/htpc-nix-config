@@ -15,6 +15,18 @@
     xkb.layout = "gb";
   };
 
+  # HTPC always-on: never sleep/suspend, regardless of lid state or idleness.
+  # This is a bedside media box — closing the laptop lid should be a no-op,
+  # and the screen must never blank while Stremio is showing.
+  services.logind = {
+    lidSwitch = "ignore";
+    lidSwitchDocked = "ignore";
+    lidSwitchExternalPower = "ignore";
+    extraConfig = ''
+      IdleAction=ignore
+    '';
+  };
+
   # Sound stack.
   services.pipewire = {
     enable = true;
