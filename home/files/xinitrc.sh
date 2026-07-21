@@ -41,8 +41,20 @@ sleep 4
 openbox &
 sleep 1
 
-# Unified Remote server — phone-as-keyboard/D-pad over LAN
-/opt/urserver/urserver-start --no-manager --no-notify &
+# Unified Remote server — phone-as-keyboard/D-pad over LAN.
+# Watchdog: urserver dies silently every few days (upstream bug, no error
+# in logs). Poll port 9512 every 30s and restart if it stops answering. The
+# stale-pidfile removal is essential — urserver-start refuses to launch if
+# the pidfile points at any live PID, including one that got recycled.
+(
+  while :; do
+    if ! ss -tln 2>/dev/null | grep -q ':9512 '; then
+      rm -f ~/.urserver/urserver.pid
+      /opt/urserver/urserver-start --no-manager --no-notify >/dev/null 2>&1
+    fi
+    sleep 30
+  done
+) &
 
 # AirPlay 2 mirror receiver — iOS/macOS devices can cast to this box.
 uxplay -n HTPC -nh -fs -vs glimagesink 2>&1 | logger -t uxplay &
