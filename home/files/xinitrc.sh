@@ -56,7 +56,14 @@ sleep 1
 # -ca renders cover art + track metadata for audio-only (Spotify/Music)
 # sessions; -nofreeze closes the video window when a client vanishes
 # instead of leaving a stale frozen frame over the kiosk.
-uxplay -n HTPC -nh -fs -ca -nofreeze -vs glimagesink 2>&1 | logger -t uxplay &
+# Respawn loop: uxplay exits when avahi restarts (e.g. during upgrades)
+# and occasionally on client-side aborts; relaunch it like urserver.
+(
+  while :; do
+    /usr/local/bin/uxplay -n HTPC -nh -fs -ca -nofreeze -vs glimagesink 2>&1 | logger -t uxplay
+    sleep 2
+  done
+) &
 
 # Launch Stremio in background so we can fullscreen it after window appears
 flatpak run com.stremio.Stremio &
