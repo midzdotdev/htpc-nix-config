@@ -316,6 +316,10 @@
   <keybind key="Print">
     <action name="Execute"><command>scrot</command></action>
   </keybind>
+  <!-- Fallback console: toggle laptop panel + terminal -->
+  <keybind key="C-A-t">
+    <action name="Execute"><command>/home/htpc/bin/terminal-display.sh</command></action>
+  </keybind>
 </keyboard>
 
 <mouse>
