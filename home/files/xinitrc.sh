@@ -53,7 +53,10 @@ sleep 1
 ) &
 
 # AirPlay 2 mirror receiver — iOS/macOS devices can cast to this box.
-uxplay -n HTPC -nh -fs -vs glimagesink 2>&1 | logger -t uxplay &
+# -ca renders cover art + track metadata for audio-only (Spotify/Music)
+# sessions; -nofreeze closes the video window when a client vanishes
+# instead of leaving a stale frozen frame over the kiosk.
+uxplay -n HTPC -nh -fs -ca -nofreeze -vs glimagesink 2>&1 | logger -t uxplay &
 
 # Launch Stremio in background so we can fullscreen it after window appears
 flatpak run com.stremio.Stremio &
