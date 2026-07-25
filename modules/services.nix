@@ -78,6 +78,6 @@ in
     6000 6001 6002  # uxplay raop
   ];
 
-  # urserver as a package — referenced by .xinitrc via PATH or absolute path.
+  # urserver as a package — launched and watchdogged by home/files/kiosk-wayland.sh.
   environment.systemPackages = [ urserver ];
 }

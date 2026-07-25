@@ -10,14 +10,14 @@ hosts/htpc/
   default.nix                   # host wiring
   hardware.nix                  # REPLACE on first install
 modules/
-  kiosk.nix                     # autologin → startx → openbox + Stremio
+  kiosk.nix                     # autologin → Cage (Wayland) + Stremio
   services.nix                  # urserver-web-proxy, urserver pkg, firewall ports
   hardware-quirks.nix           # nouveau + bluetooth blacklist, uinput udev
 home/
   htpc.nix                      # home-manager profile for the htpc user
   files/
-    xinitrc.sh                  # kiosk launcher (Stremio fullscreen watchdog)
-    openbox-rc.xml              # openbox config with Stremio + uxplay rules
+    bash_profile                # starts Cage on tty1 login
+    kiosk-wayland.sh            # kiosk launcher (Stremio/uxplay/urserver watchdogs)
 ```
 
 ## First install
