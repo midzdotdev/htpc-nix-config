@@ -53,6 +53,17 @@ export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   done
 ) &
 
+# urserver emits a tap as BTN_LEFT down+up inside one evdev frame, which
+# libinput collapses to nothing: taps do nothing while hold-to-drag works.
+# This replays those collapsed clicks properly framed. It re-attaches on its
+# own when urserver restarts, so it only needs the outer respawn for crashes.
+(
+  while :; do
+    "$HOME/bin/urclick-fix.py" 2>&1 | logger -t urclick-fix
+    sleep 5
+  done
+) &
+
 # AirPlay receiver. waylandsink replaces glimagesink now there is no X server.
 (
   while :; do

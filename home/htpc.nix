@@ -19,5 +19,12 @@
       executable = true;
     };
 
+    # Works around urserver emitting tap clicks in a single evdev frame, which
+    # libinput drops. See the header in the script.
+    "bin/urclick-fix.py" = {
+      source = ./files/urclick-fix.py;
+      executable = true;
+    };
+
   };
 }
