@@ -28,13 +28,11 @@ home/
    nixos-generate-config --root /mnt --show-hardware-config > /tmp/hw.nix
    ```
 3. Copy `/tmp/hw.nix` over `hosts/htpc/hardware.nix` in this repo.
-4. `nix-prefetch-url` the urserver tarball URL in `modules/services.nix`,
-   paste the resulting hash into the `sha256` field (replacing `lib.fakeSha256`).
-5. Install:
+4. Install:
    ```
    nixos-install --flake .#htpc
    ```
-6. Reboot. The kiosk should come up on tty1 → Stremio fullscreen.
+5. Reboot. The kiosk should come up on tty1 → Stremio fullscreen.
 
 ## Subsequent rebuilds
 

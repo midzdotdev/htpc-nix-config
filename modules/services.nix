@@ -1,16 +1,27 @@
 { config, pkgs, lib, ... }:
 
 let
-  # urserver (Unified Remote daemon) — closed source, distributed as a .deb.
-  # Not in nixpkgs; pin the upstream tarball and unpack into the store.
+  # urserver (Unified Remote daemon) — closed source, distributed as a tarball.
+  # Not in nixpkgs; pin the upstream build and unpack into the store.
+  #
+  # The path is /linux-x64/<build>/urserver-<version>.tar.gz, where <build> is
+  # only the last version component — not the full version, and with no "-1"
+  # suffix. An earlier pin here guessed the full version as the directory and
+  # 404'd, which no hash would have fixed.
+  #
+  # To bump: resolve https://www.unifiedremote.com/download/linux-x64-portable
+  # (a 302 to the current build) and nix-prefetch-url the target. Upstream
+  # garbage-collects old builds, so a pin that has fallen behind eventually
+  # 404s rather than merely being stale — treat a fetch failure here as "find
+  # the new build", not "the hash is wrong".
   urserver = pkgs.stdenv.mkDerivation rec {
     pname = "urserver";
-    version = "3.13.0.2304-1";
+    version = "3.14.0.2574";
 
     src = pkgs.fetchurl {
-      url = "https://www.unifiedremote.com/static/builds/server/linux-x64/${version}/urserver-${version}.tar.gz";
-      # nix-prefetch-url the above to fill this in:
-      sha256 = lib.fakeSha256;
+      url = "https://www.unifiedremote.com/static/builds/server/linux-x64/"
+        + "${lib.last (lib.splitString "." version)}/urserver-${version}.tar.gz";
+      hash = "sha256-4wA2VPb5QN30TWa72pUVTYfvsxlGTO8Vngh7wDHXhDE=";
     };
 
     nativeBuildInputs = [ pkgs.autoPatchelfHook ];
