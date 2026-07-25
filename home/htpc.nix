@@ -7,9 +7,20 @@
 
   programs.home-manager.enable = true;
 
-  # The two managed dotfiles. Source files live next to this one so they
-  # can be edited and diff'd as plain text.
+  # Managed dotfiles. Source files live next to this one so they can be
+  # edited and diff'd as plain text.
   home.file = {
+    # Login entry point: starts the Cage (Wayland) kiosk on tty1.
+    ".bash_profile".source = ./files/bash_profile;
+
+    # The Wayland session: Stremio + uxplay + urserver under Cage.
+    "bin/kiosk-wayland.sh" = {
+      source = ./files/kiosk-wayland.sh;
+      executable = true;
+    };
+
+    # X11 fallback (KIOSK=x11 at login). Stremio v5 shows a black window
+    # here — see the note in the file — so this is recovery only.
     ".xinitrc" = {
       source = ./files/xinitrc.sh;
       executable = true;

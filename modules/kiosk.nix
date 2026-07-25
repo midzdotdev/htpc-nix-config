@@ -46,7 +46,14 @@
   '';
 
   environment.systemPackages = with pkgs; [
-    # X session helpers used in .xinitrc
+    # Wayland kiosk (the working session — see modules/kiosk.nix notes and
+    # home/files/kiosk-wayland.sh). Stremio v5's WebView does not start under
+    # X11 on this hardware, so Cage drives the TV instead.
+    cage
+    wlr-randr
+    grim
+
+    # X session helpers used in .xinitrc (fallback path only)
     xorg.xrandr
     xorg.xset
     xorg.xprop

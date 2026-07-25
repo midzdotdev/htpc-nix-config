@@ -65,24 +65,27 @@ sleep 1
   done
 ) &
 
-# Launch Stremio in background so we can fullscreen it after window appears
-flatpak run com.stremio.Stremio &
-STREMIO_PID=$!
-
-# Watchdog: Stremio demotes itself from fullscreen to maximized when its
-# internal player closes a video. Re-apply fullscreen whenever we notice
-# that. ~2s poll, <0.01% CPU.
+# Watchdog: re-assert fullscreen whenever Stremio drops out of it.
 (
-  while kill -0 $STREMIO_PID 2>/dev/null; do
-    if wmctrl -l 2>/dev/null | grep -qi stremio; then
-      state=$(xprop -name 'Stremio - Freedom to Stream' _NET_WM_STATE 2>/dev/null)
-      case "$state" in
+  while :; do
+    win=$(wmctrl -lx 2>/dev/null | awk '$3 ~ /stremio/ {print $1; exit}')
+    if [ -n "$win" ]; then
+      case "$(xprop -id "$win" _NET_WM_STATE 2>/dev/null)" in
         *_NET_WM_STATE_FULLSCREEN*) ;;
-        *) wmctrl -r 'Stremio' -b add,fullscreen 2>/dev/null ;;
+        *) wmctrl -i -r "$win" -b add,fullscreen 2>/dev/null ;;
       esac
     fi
     sleep 2
   done
 ) &
 
-wait $STREMIO_PID
+# NOTE: this X11 session is the fallback path only (KIOSK=x11 at login).
+# Stremio v5 cannot start its WebView under X11 on this box, so it will show
+# a black window here — the Wayland session in ~/bin/kiosk-wayland.sh is the
+# working one. Kept for recovery if Cage ever fails to start.
+#
+# Respawn loop: a crash must not end xinit and drop the TV to a console.
+while :; do
+  flatpak run com.stremio.Stremio >>/tmp/stremio.log 2>&1
+  sleep 3
+done

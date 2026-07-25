@@ -753,7 +753,7 @@
   # end of the example
 -->
 
-  <application class="Stremio">
+  <application class="*tremio*">
     <decor>no</decor>
     <position force="yes">
       <monitor>1</monitor>
