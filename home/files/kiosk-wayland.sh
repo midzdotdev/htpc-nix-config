@@ -20,7 +20,11 @@ export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
     wlr-randr --output eDP-1 --off 2>/dev/null
     # Disabling the panel leaves the TV at x=1920; move it to the origin so
     # the layout starts at 0,0.
-    wlr-randr --output HDMI-A-1 --pos 0,0 2>/dev/null
+    #
+    # scale 1.25 renders the UI at 125% (a 1536x864 logical desktop on the
+    # 1080p panel) — Stremio has no interface-size setting of its own, and at
+    # 100% the text is small from across the room.
+    wlr-randr --output HDMI-A-1 --pos 0,0 --scale 1.25 2>/dev/null
   fi
 ) &
 

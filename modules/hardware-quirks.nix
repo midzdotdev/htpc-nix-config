@@ -30,8 +30,14 @@
     ];
   };
 
-  # Unified Remote's Media agent uses /dev/uinput to inject keypresses.
-  # Default perms are root-only; give the input group write access.
+  # Unified Remote injects keypresses through /dev/uinput. Both halves below
+  # are load-bearing and neither is optional now the session is Wayland:
+  # urserver detects Wayland, falls back from X11 XTEST to uinput, and if it
+  # cannot open the device it logs "No input builder available" once per
+  # keypress and does nothing — the phone connects fine and the remote just
+  # silently does not work. The module is =m and nothing else pulls it in, and
+  # default perms on the node are root-only, so the module load and the group
+  # rule are both required.
   #
   # The PCI rule is about heat: with nouveau blacklisted nothing binds the
   # MX550, and the kernel leaves runtime PM at "on" for driverless devices —
