@@ -11,7 +11,7 @@ hosts/htpc/
   hardware.nix                  # REPLACE on first install
 modules/
   kiosk.nix                     # autologin → startx → openbox + Stremio
-  services.nix                  # docker stacks, urserver-web-proxy, urserver pkg
+  services.nix                  # urserver-web-proxy, urserver pkg, firewall ports
   hardware-quirks.nix           # nouveau + bluetooth blacklist, uinput udev
 home/
   htpc.nix                      # home-manager profile for the htpc user
@@ -53,6 +53,5 @@ sudo nixos-rebuild switch --flake .#htpc
 - **Wi-Fi credentials.** Don't commit secrets. Either set up `agenix` and
   encrypt with the existing `id_ed25519_agenix` key, or pass them via
   NetworkManager once after install with `nmcli`.
-- **AIOStreams `SECRET_KEY`.** Same — replace with agenix when ready.
 - **Stremio user account.** Login is per-device state, not config.
 - **Stremio library / addon list.** Synced via the Stremio account.

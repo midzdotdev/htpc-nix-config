@@ -27,40 +27,18 @@ let
   };
 in
 {
-  # Docker for the AIOStreams + stremio-server stacks.
-  virtualisation.docker = {
-    enable = true;
-    autoPrune.enable = true;
-  };
-
-  # AIOStreams (port 3000) — the addon aggregator.
+  # No containers, and deliberately no container runtime: docker was here only
+  # for the AIOStreams and stremio-server stacks, and both are gone.
   #
-  # There is deliberately no stremio-server container: Stremio v5 bundles its
-  # own streaming server, so running both meant two node processes fighting
-  # over ports 11470/12470 (the loser fell back to 11471 and sat idle). The
-  # torrent tuning now lives in the bundled server's settings instead —
-  # see the note on cacheSize/btMaxConnections in the README.
-  virtualisation.oci-containers.backend = "docker";
-  virtualisation.oci-containers.containers = {
-    aiostreams = {
-      image = "ghcr.io/viren070/aiostreams:latest";
-      ports = [ "3000:3000" ];
-      environment = {
-        SECRET_KEY = "REPLACE_ME";  # rotate via agenix when set up
-        BASE_URL = "http://htpc.local:3000";
-      };
-      volumes = [
-        "/var/lib/htpc/aiostreams:/app/data"
-      ];
-      extraOptions = [ "--dns=1.1.1.1" "--dns=192.168.0.1" ];
-    };
-
-  };
-
-  systemd.tmpfiles.rules = [
-    "d /var/lib/htpc 0755 root root - -"
-    "d /var/lib/htpc/aiostreams 0755 root root - -"
-  ];
+  # No separate streaming server: Stremio v5 bundles its own, so running another
+  # meant two node processes fighting over ports 11470/12470 (the loser fell
+  # back to 11471 and sat idle). The torrent tuning lives in the bundled
+  # server's settings instead — see cacheSize/btMaxConnections in the README.
+  #
+  # No AIOStreams: it ran for two months without a single request (nothing had
+  # the addon installed) so it was removed rather than carried forward. If it
+  # ever comes back it needs BASE_URL on a hostname, not a DHCP address — the
+  # old deployment broke silently when the box's lease moved.
 
   # No cellular modem in this laptop, so ModemManager only adds a daemon and
   # boot-time device probing.
@@ -84,7 +62,6 @@ in
   # Ports we own.
   networking.firewall.allowedTCPPorts = [
     22       # ssh
-    3000     # aiostreams
     9530     # unified remote web UI proxy
     9510     # unified remote (local only, but firewall would block xdg LAN clients)
     9512     # unified remote binary protocol

@@ -17,7 +17,7 @@
   users.users.htpc = {
     isNormalUser = true;
     description = "HTPC kiosk";
-    extraGroups = [ "wheel" "networkmanager" "docker" "input" "video" "audio" ];
+    extraGroups = [ "wheel" "networkmanager" "input" "video" "audio" ];
     initialPassword = "htpc";
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINp8YWPvHlEeSNjiI0INmOq71E7C82+zpS4Ox/tqYeZ+ james@James-MBP.local"
