@@ -18,7 +18,13 @@ home/
   files/
     bash_profile                # starts Cage on tty1 login
     kiosk-wayland.sh            # kiosk launcher (Stremio/uxplay/urserver watchdogs)
+    urclick-fix.py              # repairs Unified Remote's collapsed tap clicks
+docs/
+  handoff.md                    # current state, hard-won gotchas, next project
 ```
+
+Start with [docs/handoff.md](docs/handoff.md) — it records why the odd-looking
+parts of this config are the way they are, and which of them are load-bearing.
 
 ## First install
 
