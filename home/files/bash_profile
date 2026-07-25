@@ -1,17 +1,15 @@
 # Start the kiosk on tty1 login.
 #
-# Wayland (cage) rather than X11: Stremio v5's WebView does not start under
-# X11 on this box (upstream stremio-bugs#2634). Set KIOSK=x11 before login to
-# fall back to the old startx session.
-if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  if [ "$KIOSK" = "x11" ]; then
-    startx
-  else
-    # Respawn: if the session dies, start a new one rather than dropping the
-    # TV to a bare console.
-    while :; do
-      cage -d -- "$HOME/bin/kiosk-wayland.sh" >>/tmp/cage.log 2>&1
-      sleep 3
-    done
-  fi
+# Wayland (cage) only: Stremio v5's WebView does not start under X11 on this
+# box (upstream stremio-bugs#2634), so the old startx session was removed —
+# it could not have run the kiosk anyway. Text consoles are unaffected:
+# Ctrl+Alt+F2 is a kernel VT served by getty, not by X.
+#
+# Respawn: if the session dies, start a new one rather than dropping the TV
+# to a bare console.
+if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+  while :; do
+    cage -d -- "$HOME/bin/kiosk-wayland.sh" >>/tmp/cage.log 2>&1
+    sleep 3
+  done
 fi

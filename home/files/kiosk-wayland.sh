@@ -18,6 +18,9 @@ export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   sleep 2
   if wlr-randr | grep -q '^HDMI-A-1'; then
     wlr-randr --output eDP-1 --off 2>/dev/null
+    # Disabling the panel leaves the TV at x=1920; move it to the origin so
+    # the layout starts at 0,0.
+    wlr-randr --output HDMI-A-1 --pos 0,0 2>/dev/null
   fi
 ) &
 
@@ -54,4 +57,15 @@ export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
   done
 ) &
 
-exec flatpak run com.stremio.Stremio
+# Stremio in the foreground, respawned in place. Cage exits when its client
+# exits, so looping here (rather than exec'ing) keeps the compositor and the
+# helpers above alive across a Stremio crash instead of rebuilding the whole
+# session. The outer loop in .bash_profile covers Cage itself dying.
+#
+# --no-window-decorations drops the GTK headerbar, so the UI fills the TV.
+# Stremio's own fullscreen toggle is not remembered between launches, which
+# is why this flag rather than the in-app button.
+while :; do
+  flatpak run com.stremio.Stremio --no-window-decorations >>/tmp/stremio.log 2>&1
+  sleep 3
+done

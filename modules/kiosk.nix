@@ -1,19 +1,15 @@
 { config, pkgs, lib, ... }:
 
 {
-  # Autologin htpc on tty1 → ~/.bash_profile auto-runs startx → .xinitrc
-  # spawns openbox + stremio + uxplay + urserver.
+  # Autologin htpc on tty1 → ~/.bash_profile starts Cage → kiosk-wayland.sh
+  # runs Stremio with uxplay and urserver behind it.
+  #
+  # No X server: Stremio v5's WebView fails to start under X11 on this
+  # hardware (upstream stremio-bugs#2634, reproduced on both the flatpak and
+  # the native build), so the session is Wayland-only. Text consoles are
+  # unaffected — Ctrl+Alt+F2 is a kernel VT served by getty.
   services.getty.autologinUser = "htpc";
-
-  services.xserver = {
-    enable = true;
-    autorun = false;
-    displayManager.startx.enable = true;
-
-    windowManager.openbox.enable = true;
-
-    xkb.layout = "gb";
-  };
+  console.keyMap = "uk";
 
   # HTPC always-on: never sleep/suspend, regardless of lid state or idleness.
   # This is a bedside media box — closing the laptop lid should be a no-op,
@@ -27,6 +23,16 @@
     '';
   };
 
+  # A desktop portal must be present even in a bare kiosk: without one,
+  # libadwaita blocks for 25s per settings lookup (colour-scheme, contrast,
+  # high-contrast) before giving up, which added roughly 100s to every
+  # Stremio launch.
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.common.default = "gtk";
+  };
+
   # Sound stack.
   services.pipewire = {
     enable = true;
@@ -37,30 +43,15 @@
   };
   security.rtkit.enable = true;
 
-  # Auto-start startx when logging into tty1 (only tty1, so SSH sessions don't
-  # try to launch X).
-  programs.bash.loginShellInit = ''
-    if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-      exec startx
-    fi
-  '';
+  # The kiosk is launched from ~/.bash_profile (home/files/bash_profile) so
+  # that it only fires on tty1 and never on SSH logins.
 
   environment.systemPackages = with pkgs; [
-    # Wayland kiosk (the working session — see modules/kiosk.nix notes and
-    # home/files/kiosk-wayland.sh). Stremio v5's WebView does not start under
-    # X11 on this hardware, so Cage drives the TV instead.
+    # Wayland kiosk: Cage is the compositor and wlr-randr selects the output.
+    # grim is for grabbing the screen over SSH when debugging remotely.
     cage
     wlr-randr
     grim
-
-    # X session helpers used in .xinitrc (fallback path only)
-    xorg.xrandr
-    xorg.xset
-    xorg.xprop
-    xorg.xauth
-    wmctrl
-    unclutter
-    xterm
 
     # Media / kiosk apps
     stremio
