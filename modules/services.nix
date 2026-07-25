@@ -33,8 +33,13 @@ in
     autoPrune.enable = true;
   };
 
-  # AIOStreams (port 3000) + stremio-server (host network).
-  # The compose files live in the repo; bind-mount them in.
+  # AIOStreams (port 3000) — the addon aggregator.
+  #
+  # There is deliberately no stremio-server container: Stremio v5 bundles its
+  # own streaming server, so running both meant two node processes fighting
+  # over ports 11470/12470 (the loser fell back to 11471 and sat idle). The
+  # torrent tuning now lives in the bundled server's settings instead —
+  # see the note on cacheSize/btMaxConnections in the README.
   virtualisation.oci-containers.backend = "docker";
   virtualisation.oci-containers.containers = {
     aiostreams = {
@@ -50,23 +55,20 @@ in
       extraOptions = [ "--dns=1.1.1.1" "--dns=192.168.0.1" ];
     };
 
-    stremio-server = {
-      image = "stremio/server:latest";
-      extraOptions = [ "--network=host" ];
-      volumes = [
-        "/var/lib/htpc/stremio-server:/root/.stremio-server"
-      ];
-    };
   };
 
   systemd.tmpfiles.rules = [
     "d /var/lib/htpc 0755 root root - -"
     "d /var/lib/htpc/aiostreams 0755 root root - -"
-    "d /var/lib/htpc/stremio-server 0755 root root - -"
   ];
 
-  # urserver itself runs from .xinitrc (it needs X). All we expose here is
-  # the LAN-visible web-UI proxy on :9530 → 127.0.0.1:9510.
+  # No cellular modem in this laptop, so ModemManager only adds a daemon and
+  # boot-time device probing.
+  systemd.services.ModemManager.enable = false;
+
+  # urserver is started by the kiosk session (home/files/kiosk-wayland.sh),
+  # which also watchdogs it. All we expose here is the LAN-visible web-UI
+  # proxy on :9530 → 127.0.0.1:9510.
   systemd.services.urserver-web-proxy = {
     description = "Expose Unified Remote web UI on the LAN";
     wantedBy = [ "multi-user.target" ];
