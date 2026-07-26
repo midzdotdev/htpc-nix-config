@@ -11,21 +11,17 @@
 
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 
-# TV only when it's plugged in: cage spans every connected output by default,
-# which would stretch the UI across the TV and the laptop panel. The panel is
-# left enabled when there is no TV so the box stays usable on its own.
+# Output layout (which outputs are on, and the 125% scale) lives in
+# ~/.config/kanshi/config. kanshi rather than a one-shot wlr-randr because the
+# TV hotplugs: switching it off or changing its input disconnects HDMI, and
+# wlroots then recreates the output with default settings. Cage keeps running
+# throughout, so nothing re-ran the old wlr-randr block and the UI silently
+# dropped back to 100%. kanshi watches for output changes and re-applies.
 (
-  sleep 2
-  if wlr-randr | grep -q '^HDMI-A-1'; then
-    wlr-randr --output eDP-1 --off 2>/dev/null
-    # Disabling the panel leaves the TV at x=1920; move it to the origin so
-    # the layout starts at 0,0.
-    #
-    # scale 1.25 renders the UI at 125% (a 1536x864 logical desktop on the
-    # 1080p panel) — Stremio has no interface-size setting of its own, and at
-    # 100% the text is small from across the room.
-    wlr-randr --output HDMI-A-1 --pos 0,0 --scale 1.25 2>/dev/null
-  fi
+  while :; do
+    kanshi 2>&1 | logger -t kanshi
+    sleep 5
+  done
 ) &
 
 # Audio out over HDMI. The profile can read as "unavailable" until the TV's

@@ -26,5 +26,8 @@
       executable = true;
     };
 
+    # Output layout + the 125% UI scale, re-applied on TV hotplug.
+    ".config/kanshi/config".source = ./files/kanshi-config;
+
   };
 }

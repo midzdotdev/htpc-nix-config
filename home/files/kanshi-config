@@ -1,0 +1,27 @@
+# Output layout, owned by kanshi.
+#
+# This used to be a one-shot `wlr-randr` at session start, which silently lost
+# the scale: turning the TV off (or switching its input) disconnects HDMI, and
+# wlroots then destroys and recreates the output with default settings, so the
+# UI dropped back to 100% while Cage kept running and never re-ran the script.
+# The laptop panel never showed the problem because an internal output does not
+# hotplug. kanshi watches for output changes and re-applies the matching
+# profile, so a TV power cycle no longer resets anything.
+#
+# Profiles match on the exact set of connected outputs, so the TV profile has
+# to name eDP-1 too.
+
+profile tv {
+	# scale 1.25 renders the UI at 125% — a 1536x864 logical desktop on the
+	# 1080p panel. Stremio has no interface-size setting of its own, and at
+	# 100% the text is too small from the sofa.
+	output HDMI-A-1 enable mode 1920x1080@60Hz position 0,0 scale 1.25
+	# Cage spans every connected output by default, which would stretch the
+	# UI across the TV and the laptop panel.
+	output eDP-1 disable
+}
+
+# No TV attached: keep the built-in panel usable so the box works on its own.
+profile panel {
+	output eDP-1 enable position 0,0
+}

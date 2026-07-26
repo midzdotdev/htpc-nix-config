@@ -47,9 +47,12 @@
   # that it only fires on tty1 and never on SSH logins.
 
   environment.systemPackages = with pkgs; [
-    # Wayland kiosk: Cage is the compositor and wlr-randr selects the output.
+    # Wayland kiosk: Cage is the compositor, kanshi owns the output layout
+    # (see home/files/kanshi-config — it must re-apply on hotplug, which a
+    # one-shot wlr-randr cannot). wlr-randr is kept for interactive poking.
     # grim is for grabbing the screen over SSH when debugging remotely.
     cage
+    kanshi
     wlr-randr
     grim
 

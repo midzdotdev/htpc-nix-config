@@ -21,7 +21,7 @@ The box itself is **not** managed by the flake yet — it is a hand-configured
 Debian trixie install. The flake is written and now buildable in principle, but
 applying it is still a separate project.
 
-## The three things worth remembering
+## The four things worth remembering
 
 **Stremio v5 cannot run under X11 on this box.** Its WebView fails with
 `TypeError: undefined is not a function`
@@ -54,6 +54,19 @@ Upstream's answer to Wayland is "use X11", which is unavailable here. Their
 stated reason — that Wayland blocks input simulation — is also wrong for this
 box: uinput is kernel-level and demonstrably works.
 
+**The TV hotplugs, so output config must be re-applied, not set once.**
+Switching the TV off or changing its input disconnects HDMI, and wlroots then
+destroys and recreates `HDMI-A-1` with default settings — dropping the UI scale
+back to 100%. Cage keeps running throughout, so nothing re-runs a one-shot
+`wlr-randr`, and the failure is silent and delayed: the scale is correct for
+hours, then quietly is not. `eDP-1` never shows the problem because an internal
+panel does not hotplug. `kanshi` therefore owns the output layout
+(`~/.config/kanshi/config`); it watches for output changes and re-applies the
+matching profile. Verified by forcing a disconnect through
+`/sys/class/drm/*/status` (`echo off`, then `echo detect`) and watching the
+profile come back. Do not "simplify" this back into a `wlr-randr` call in the
+kiosk script.
+
 ## What changed this session
 
 **AIOStreams removed, and the container runtime with it.** It had served zero
@@ -66,8 +79,8 @@ dead. With it gone nothing else wanted docker, so all seven docker packages,
 went too — 2.04 GB reclaimed.
 
 **UI scale to 125%.** Stremio has no interface-size setting, so this is
-compositor-side: `wlr-randr --scale 1.25` in the kiosk script, giving a
-1536x864 logical desktop on the 1080p panel.
+compositor-side: scale 1.25, giving a 1536x864 logical desktop on the 1080p
+panel. Owned by kanshi, not a one-shot `wlr-randr` — see below.
 
 **Unified Remote fixed** (see above).
 

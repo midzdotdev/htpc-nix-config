@@ -19,6 +19,7 @@ home/
     bash_profile                # starts Cage on tty1 login
     kiosk-wayland.sh            # kiosk launcher (Stremio/uxplay/urserver watchdogs)
     urclick-fix.py              # repairs Unified Remote's collapsed tap clicks
+    kanshi-config               # output layout + 125% scale, re-applied on hotplug
 docs/
   handoff.md                    # current state, hard-won gotchas, next project
 ```
