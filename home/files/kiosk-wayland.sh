@@ -76,7 +76,16 @@ export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 # --no-window-decorations drops the GTK headerbar, so the UI fills the TV.
 # Stremio's own fullscreen toggle is not remembered between launches, which
 # is why this flag rather than the in-app button.
+#
+# Only run Stremio while a TV is attached. With no TV there is nothing to
+# display and a left-open player has pegged a core for days, so the box is
+# better off idle — tv-off-hook.sh stops Stremio when HDMI goes away, and this
+# gate keeps the loop from immediately starting it again. Polling rather than
+# waiting on an event so that a TV coming back is picked up within a few
+# seconds even if the hook missed a transition.
 while :; do
-  flatpak run com.stremio.Stremio --no-window-decorations >>/tmp/stremio.log 2>&1
+  if "$HOME/bin/tv-connected"; then
+    flatpak run com.stremio.Stremio --no-window-decorations >>/tmp/stremio.log 2>&1
+  fi
   sleep 3
 done

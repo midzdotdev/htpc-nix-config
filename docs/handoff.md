@@ -21,7 +21,7 @@ The box itself is **not** managed by the flake yet — it is a hand-configured
 Debian trixie install. The flake is written and now buildable in principle, but
 applying it is still a separate project.
 
-## The four things worth remembering
+## The five things worth remembering
 
 **Stremio v5 cannot run under X11 on this box.** Its WebView fails with
 `TypeError: undefined is not a function`
@@ -67,6 +67,32 @@ matching profile. Verified by forcing a disconnect through
 profile come back. Do not "simplify" this back into a `wlr-randr` call in the
 kiosk script.
 
+**Stremio left in the player with no TV pegs a core indefinitely.** Observed
+after ~4 days: one Stremio process at 100% of a core with 46 hours of
+accumulated CPU time, package at 85 C, fan at 4200 rpm — with the box otherwise
+completely idle, the TV off, the network silent and the player merely *paused*.
+Sending Escape did nothing; restarting Stremio cleared it instantly and dropped
+RSS from 1.5 GB to 199 MB. The likely mechanism is the video render loop losing
+its vsync source when the output disappears and spinning free, but that is not
+proven — what is certain is the correlation with the TV being off, and that a
+restart fixes it. `tv-off-hook.sh` now stops Stremio when HDMI goes away and
+the kiosk loop will not restart it until a TV is back.
+
+Two measurement traps cost real time here, both of which make the box look
+innocent when it is not:
+
+- **`ps -o pcpu` is an average over the process's whole lifetime, not
+  instantaneous.** On a box up for days it barely moves, so a process pegging a
+  core reads the same before and after a fix, and `ps --sort=-pcpu` ranks by
+  accumulated time rather than current load. Use `top -bn2` and read the
+  *second* iteration, or diff `utime+stime` from `/proc/<pid>/stat`.
+- **`/sys/class/hwmon/hwmon*/temp1_input` does not mean the CPU.** The first
+  glob match on this box is an unrelated sensor reading ~30 C cooler than the
+  package. Read `coretemp` (`Package id 0`), `dell_ddv`'s `CPU` label, or
+  `/sys/class/thermal/*/type` = `x86_pkg_temp`. Getting this wrong shows 54 C
+  next to a 4200 rpm fan and makes the cooling look broken when it is working
+  correctly.
+
 ## What changed this session
 
 **AIOStreams removed, and the container runtime with it.** It had served zero
@@ -92,6 +118,28 @@ the box runs, so a first rebuild no longer downgrades a working install.
 
 **Torrentio installed** with the caller's quality/size filters
 (`qualityfilter=…|limit=5|sizefilter=10GB`).
+
+**Stremio is now stopped while no TV is attached.** kanshi's `panel` profile
+runs `tv-off-hook.sh`, which debounces for 60 s (a TV input change also drops
+HDMI, and that should not cost you your place) and then stops Stremio; the
+kiosk loop gates on `tv-connected` so it does not immediately restart it.
+Verified both ways: a 20 s disconnect leaves Stremio running, a real TV-off
+stops it and it stays stopped, and it returns within ~30 s of the TV coming
+back. Measured idle states, all three of which are **fan-silent**, so the
+reason to stop Stremio is the memory and the runaway above, not noise:
+
+| State | CPU | Fan | Package | RAM used |
+|---|---|---|---|---|
+| Runaway (the fault) | 100% of a core | 4201 rpm | 85 C | — |
+| Stremio idle on dashboard | 1.4% | 0 rpm | 52 C | 4295 MB |
+| Stremio stopped (chosen) | 0.0% | 0 rpm | 48 C | 710 MB |
+| Whole session stopped | 0.0% | 0 rpm | 48 C | 623 MB |
+
+Stopping the entire session was rejected on those numbers: it buys 87 MB over
+just stopping Stremio, and costs the compositor, uxplay and — the deciding
+factor — the planned wayvnc service, which is most wanted precisely when the TV
+is off. It does not even stop urserver, which daemonises out of the session
+cgroup and keeps running regardless.
 
 ## Next project: control the display from the laptop in a browser
 

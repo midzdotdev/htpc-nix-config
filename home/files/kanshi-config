@@ -21,7 +21,10 @@ profile tv {
 	output eDP-1 disable
 }
 
-# No TV attached: keep the built-in panel usable so the box works on its own.
+# No TV attached: keep the built-in panel usable so the box works on its own,
+# and stop Stremio. The hook debounces first, so switching the TV's input does
+# not cost you your place — see tv-off-hook.sh for why it is stopped at all.
 profile panel {
 	output eDP-1 enable position 0,0
+	exec ~/bin/tv-off-hook.sh
 }

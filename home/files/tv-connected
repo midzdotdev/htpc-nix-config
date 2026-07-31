@@ -1,0 +1,21 @@
+#!/bin/bash
+# Exit 0 while a TV is attached to any HDMI connector, non-zero otherwise.
+#
+# Reads DRM sysfs rather than asking the compositor, so it needs no Wayland
+# connection and behaves identically from a kanshi hook and from the kiosk
+# script. It is also a plain file read rather than a round-trip, which matters
+# because the kiosk loop polls it every few seconds.
+#
+# This box's TV does genuinely drop the HDMI link when powered off — that is
+# what makes the whole scheme work, and it is observable: kanshi switches to
+# the "panel" profile when it happens.
+
+for status in /sys/class/drm/*/status; do
+	case "$status" in
+	*HDMI*)
+		[ "$(cat "$status" 2>/dev/null)" = "connected" ] && exit 0
+		;;
+	esac
+done
+
+exit 1

@@ -26,6 +26,19 @@
       executable = true;
     };
 
+    # Is a TV attached? Shared by the kiosk loop and the kanshi hook so the two
+    # cannot drift apart.
+    "bin/tv-connected" = {
+      source = ./files/tv-connected;
+      executable = true;
+    };
+
+    # Stops Stremio when the TV goes away, after a debounce.
+    "bin/tv-off-hook.sh" = {
+      source = ./files/tv-off-hook.sh;
+      executable = true;
+    };
+
     # Output layout + the 125% UI scale, re-applied on TV hotplug.
     ".config/kanshi/config".source = ./files/kanshi-config;
 

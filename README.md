@@ -20,6 +20,8 @@ home/
     kiosk-wayland.sh            # kiosk launcher (Stremio/uxplay/urserver watchdogs)
     urclick-fix.py              # repairs Unified Remote's collapsed tap clicks
     kanshi-config               # output layout + 125% scale, re-applied on hotplug
+    tv-connected                # is a TV attached? (shared by loop and hook)
+    tv-off-hook.sh              # stops Stremio when the TV goes, after a debounce
 docs/
   handoff.md                    # current state, hard-won gotchas, next project
 ```
