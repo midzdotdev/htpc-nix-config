@@ -29,4 +29,9 @@ if "$HOME/bin/tv-connected"; then
 fi
 
 logger -t tv-off-hook "TV still gone after ${DEBOUNCE}s — stopping Stremio"
-flatpak kill com.stremio.Stremio
+
+# Already stopped is the target state, not a failure: kanshi applies a profile
+# more than once per transition, so this legitimately runs against a Stremio
+# that is already gone. Without this the hook would exit non-zero and log
+# "error: ... is not running" every time it succeeded at doing nothing.
+flatpak kill com.stremio.Stremio 2>/dev/null || true

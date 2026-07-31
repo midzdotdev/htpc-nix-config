@@ -125,7 +125,18 @@ HDMI, and that should not cost you your place) and then stops Stremio; the
 kiosk loop gates on `tv-connected` so it does not immediately restart it.
 Verified both ways: a 20 s disconnect leaves Stremio running, a real TV-off
 stops it and it stays stopped, and it returns within ~30 s of the TV coming
-back. Measured idle states, all three of which are **fan-silent**, so the
+back.
+
+Every layer here is deliberately **level-triggered**, and it should stay that
+way. kanshi matches a profile against the currently connected outputs, the hook
+sleeps and then re-reads the *live* TV state rather than acting on the
+transition that woke it, and the kiosk loop checks the current state each pass.
+That is what makes rapid transitions converge rather than latch: a duplicate or
+swallowed trigger can only cause a redundant check, never a wrong action.
+Verified with off/on/off and on/off/on sequences fast enough that the middle
+transition is swallowed by the hook's lock — both still settle to the state
+matching where the TV ended up. Do not rewrite any of these to act on the
+edge that triggered them. Measured idle states, all three of which are **fan-silent**, so the
 reason to stop Stremio is the memory and the runaway above, not noise:
 
 | State | CPU | Fan | Package | RAM used |
