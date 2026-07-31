@@ -20,6 +20,20 @@ no-op, so replaying it cannot produce a double click.
 
 Motion, scrolling and keystrokes are untouched — they already work, and are
 left to flow through urserver's own device.
+
+Two traps if you ever drive this box's UI from a synthetic device — there is no
+keyboard or mouse attached, so sooner or later someone will:
+
+* Relative motion cannot target anything precisely. libinput applies pointer
+  acceleration, so the delta you emit is not the delta applied, and "move to
+  0,0 then move x,y" lands somewhere else entirely. Register an absolute device
+  instead (ABS_X/ABS_Y + INPUT_PROP_DIRECT), which libinput maps 1:1 onto the
+  output.
+* The kernel silently discards events for any key code not declared with
+  UI_SET_KEYBIT before UI_DEV_CREATE. A device that declares a handful of keys
+  types only those characters and drops the rest, with no error from the write,
+  no error in the compositor, and nothing in any log — it just looks as though
+  most of your keystrokes vanished.
 """
 
 import fcntl

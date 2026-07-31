@@ -9,6 +9,13 @@
 # This box's TV does genuinely drop the HDMI link when powered off — that is
 # what makes the whole scheme work, and it is observable: kanshi switches to
 # the "panel" profile when it happens.
+#
+# That is an assumption about the hardware, not a guarantee. Some TVs hold the
+# link up over CEC/ARC while "off", and on one of those this returns 0 forever,
+# kanshi never applies the panel profile, the hook never fires, and Stremio is
+# never stopped. Nothing errors — the only symptom is the fan, which is exactly
+# how this was found the first time. If you swap the TV, check that
+# /sys/class/drm/*-HDMI-*/status actually goes to "disconnected" when it is off.
 
 for status in /sys/class/drm/*/status; do
 	case "$status" in

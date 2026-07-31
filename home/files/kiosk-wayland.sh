@@ -8,6 +8,14 @@
 # Cage runs exactly one client, so this wrapper starts the helpers in the
 # background and leaves Stremio in the foreground: when Stremio exits, the
 # session ends and the respawn loop in .bash_profile starts a fresh one.
+#
+# "One client" is about which surface is shown, not about who may connect —
+# grim, wlr-randr and kanshi all attach fine. But anything needing *focus* does
+# not work here, because focus never leaves Stremio. The clipboard is the one
+# that bites: wl-copy can never take the selection, and Cage creates no
+# data-control manager either, so wl-paste reads nothing. Do not build anything
+# on the Wayland clipboard on this box — it fails silently and returns empty
+# rather than erroring.
 
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 

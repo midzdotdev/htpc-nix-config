@@ -1,156 +1,76 @@
 # HTPC — session handoff
 
-_Written 2026-07-25, evening. Supersedes the copy that lived in `/tmp` on the
-Mac, which did not survive reboots and had the repo location wrong._
+_Written 2026-07-31._
+
+**This file is disposable. The hard-won details live in comments next to the
+code they govern** — if something here contradicts a comment, the comment wins.
+What belongs here is only the stuff with no code to attach to: current state,
+what is planned next, and what is still outstanding.
 
 ## Current state: working
 
 Stremio 1.1.3 fullscreen on the TV under a Wayland kiosk at 125% UI scale, fan
-silent, Unified Remote working from the phone, Torrentio installed. Verified
-across a reboot.
+silent, Unified Remote working from the phone, Torrentio installed, and Stremio
+stopped automatically whenever the TV is off. Verified across a reboot.
 
 | | |
 |---|---|
 | Reach it | `ssh htpc` (key auth, passwordless; `htpc`/`htpc` for sudo) |
 | Network | Home / `192.168.0.220`; profiles saved for `SKY6DZKK`, the Huawei 5 GHz, and Cornwall Lodge — switch with `sudo nmtui` |
-| Session | Cage (Wayland) → Stremio + uxplay + urserver + urclick-fix, all self-respawning |
-| Fan / temp | ~0 RPM idle, 53 °C package |
+| Session | Cage (Wayland) → Stremio + uxplay + urserver + urclick-fix + kanshi, all self-respawning |
+| Fan / temp | 0 RPM idle, ~52 °C package |
 | Config repo | **On the Mac** at `~/code/htpc-nix-config` → https://github.com/midzdotdev/htpc-nix-config |
 
 The box itself is **not** managed by the flake yet — it is a hand-configured
-Debian trixie install. The flake is written and now buildable in principle, but
-applying it is still a separate project.
+Debian trixie install. The flake is written and buildable in principle, but
+applying it is a separate project.
 
-## The five things worth remembering
+## Where the gotchas are recorded
 
-**Stremio v5 cannot run under X11 on this box.** Its WebView fails with
-`TypeError: undefined is not a function`
-([upstream #2634](https://github.com/Stremio/stremio-bugs/issues/2634)) and the
-window renders solid black. Not a packaging problem — it reproduces on the
-flatpak *and* the native `.deb`, and survives every WebKit/GL workaround.
-Wayland is the fix, so X11 is gone entirely and must not come back. Rolling
-back isn't an option either: flathub has garbage-collected v4's objects.
+Every one of these is a trap that cost real time and looks like a tidy-up
+opportunity to anyone who does not know the story. They are documented at the
+code, not here:
 
-**The dormant NVIDIA MX550 was the fan.** With `nouveau` blacklisted nothing
-binds the card, and the kernel leaves runtime PM at `on` for driverless devices
-— so it sat fully powered while the CPU idled. A udev rule sets
-`power/control=auto`, it reaches D3cold, and the fan stops (4750 → 0 RPM).
-Confirmed still `suspended` after the latest reboot.
+| Gotcha | Lives in |
+|---|---|
+| Stremio v5 cannot run under X11 — Wayland is not a preference | `modules/kiosk.nix`, `home/files/bash_profile` |
+| The dormant MX550 was the fan; runtime PM must be forced to `auto` | `modules/hardware-quirks.nix` |
+| Unified Remote's taps need the uinput module, the udev rule *and* the shim | `modules/hardware-quirks.nix`, `home/files/urclick-fix.py` |
+| Driving the UI synthetically: pointer accel, and undeclared key codes | `home/files/urclick-fix.py` |
+| The TV hotplugs, so output config must be re-applied, not set once | `home/files/kanshi-config` |
+| Stremio pegs a core if left in the player with no TV | `home/files/tv-off-hook.sh` |
+| `ps -o pcpu` and `hwmon*/temp1_input` both lie when chasing a fan complaint | `home/files/tv-off-hook.sh` |
+| Why the TV-off logic is level-triggered, and must stay that way | `home/files/tv-off-hook.sh` |
+| The scheme assumes the TV drops the HDMI link when off | `home/files/tv-connected` |
+| Cage gives the selection only to the focused client, so the clipboard is unusable | `home/files/kiosk-wayland.sh` |
+| urserver's download URL shape, and that upstream deletes old builds | `modules/services.nix` |
 
-**Unified Remote's taps need `urclick-fix`.** urserver emits a tap as
-`BTN_LEFT` down *and* up inside a single evdev frame — identical timestamp, no
-`SYN_REPORT` between — and libinput collapses that to a no-op. The symptom is
-diagnostic: taps do nothing while press-and-hold works, because holding
-straddles two frames. `~/bin/urclick-fix.py` watches urserver's device
-read-only and replays collapsed clicks properly framed on its own uinput
-device. Three separate pieces are load-bearing and none is redundant:
+## What changed most recently
 
-1. the `uinput` module being loaded (`/etc/modules-load.d/uinput.conf`; it is
-   `=m` and nothing else pulls it in),
-2. the udev rule giving the node `input`-group access, and
-3. `urclick-fix` itself.
+- **AIOStreams removed, and the container runtime with it.** It had served zero
+  requests in 70 days and no Stremio profile referenced the addon. Nothing else
+  wanted docker, so all seven packages, `/var/lib/docker`, the apt repo, the
+  group and the bridge went too — 2.04 GB reclaimed.
+- **UI scale to 125%**, owned by kanshi.
+- **Unified Remote fixed** — taps had never worked under Wayland.
+- **urserver pin corrected** — the old URL 404'd and could never have built.
+- **Torrentio installed** with quality/size filters.
+- **Stremio is stopped while no TV is attached**, after a 60 s debounce.
 
-Upstream's answer to Wayland is "use X11", which is unavailable here. Their
-stated reason — that Wayland blocks input simulation — is also wrong for this
-box: uinput is kernel-level and demonstrably works.
-
-**The TV hotplugs, so output config must be re-applied, not set once.**
-Switching the TV off or changing its input disconnects HDMI, and wlroots then
-destroys and recreates `HDMI-A-1` with default settings — dropping the UI scale
-back to 100%. Cage keeps running throughout, so nothing re-runs a one-shot
-`wlr-randr`, and the failure is silent and delayed: the scale is correct for
-hours, then quietly is not. `eDP-1` never shows the problem because an internal
-panel does not hotplug. `kanshi` therefore owns the output layout
-(`~/.config/kanshi/config`); it watches for output changes and re-applies the
-matching profile. Verified by forcing a disconnect through
-`/sys/class/drm/*/status` (`echo off`, then `echo detect`) and watching the
-profile come back. Do not "simplify" this back into a `wlr-randr` call in the
-kiosk script.
-
-**Stremio left in the player with no TV pegs a core indefinitely.** Observed
-after ~4 days: one Stremio process at 100% of a core with 46 hours of
-accumulated CPU time, package at 85 C, fan at 4200 rpm — with the box otherwise
-completely idle, the TV off, the network silent and the player merely *paused*.
-Sending Escape did nothing; restarting Stremio cleared it instantly and dropped
-RSS from 1.5 GB to 199 MB. The likely mechanism is the video render loop losing
-its vsync source when the output disappears and spinning free, but that is not
-proven — what is certain is the correlation with the TV being off, and that a
-restart fixes it. `tv-off-hook.sh` now stops Stremio when HDMI goes away and
-the kiosk loop will not restart it until a TV is back.
-
-Two measurement traps cost real time here, both of which make the box look
-innocent when it is not:
-
-- **`ps -o pcpu` is an average over the process's whole lifetime, not
-  instantaneous.** On a box up for days it barely moves, so a process pegging a
-  core reads the same before and after a fix, and `ps --sort=-pcpu` ranks by
-  accumulated time rather than current load. Use `top -bn2` and read the
-  *second* iteration, or diff `utime+stime` from `/proc/<pid>/stat`.
-- **`/sys/class/hwmon/hwmon*/temp1_input` does not mean the CPU.** The first
-  glob match on this box is an unrelated sensor reading ~30 C cooler than the
-  package. Read `coretemp` (`Package id 0`), `dell_ddv`'s `CPU` label, or
-  `/sys/class/thermal/*/type` = `x86_pkg_temp`. Getting this wrong shows 54 C
-  next to a 4200 rpm fan and makes the cooling look broken when it is working
-  correctly.
-
-## What changed this session
-
-**AIOStreams removed, and the container runtime with it.** It had served zero
-requests since 2026-05-16: `accessed_at` 70 days stale, empty cache and
-analytics tables, and no Stremio profile referenced the addon — it was never
-installed on the box it ran for. Its `BASE_URL` also still pointed at
-`192.168.0.25`, a lease the box left long ago, so every URL it generated was
-dead. With it gone nothing else wanted docker, so all seven docker packages,
-`/var/lib/docker`, the apt repo, the `docker` group and the `docker0` bridge
-went too — 2.04 GB reclaimed.
-
-**UI scale to 125%.** Stremio has no interface-size setting, so this is
-compositor-side: scale 1.25, giving a 1536x864 logical desktop on the 1080p
-panel. Owned by kanshi, not a one-shot `wlr-randr` — see below.
-
-**Unified Remote fixed** (see above).
-
-**urserver pin corrected.** The flake pinned 3.13.0.2304-1 at a URL that
-returns a hard 404 — the path uses the *build number* as the directory, not the
-full version, and no `-1` suffix. It could never have built. Now pinned to
-3.14.0.2574 with a real hash, which is both upstream's current build and what
-the box runs, so a first rebuild no longer downgrades a working install.
-
-**Torrentio installed** with the caller's quality/size filters
-(`qualityfilter=…|limit=5|sizefilter=10GB`).
-
-**Stremio is now stopped while no TV is attached.** kanshi's `panel` profile
-runs `tv-off-hook.sh`, which debounces for 60 s (a TV input change also drops
-HDMI, and that should not cost you your place) and then stops Stremio; the
-kiosk loop gates on `tv-connected` so it does not immediately restart it.
-Verified both ways: a 20 s disconnect leaves Stremio running, a real TV-off
-stops it and it stays stopped, and it returns within ~30 s of the TV coming
-back.
-
-Every layer here is deliberately **level-triggered**, and it should stay that
-way. kanshi matches a profile against the currently connected outputs, the hook
-sleeps and then re-reads the *live* TV state rather than acting on the
-transition that woke it, and the kiosk loop checks the current state each pass.
-That is what makes rapid transitions converge rather than latch: a duplicate or
-swallowed trigger can only cause a redundant check, never a wrong action.
-Verified with off/on/off and on/off/on sequences fast enough that the middle
-transition is swallowed by the hook's lock — both still settle to the state
-matching where the TV ended up. Do not rewrite any of these to act on the
-edge that triggered them. Measured idle states, all three of which are **fan-silent**, so the
-reason to stop Stremio is the memory and the runaway above, not noise:
+Measured idle states, kept here because the decision was a trade-off rather
+than a fact about the code. All three are **fan-silent**, so stopping Stremio
+is about the memory and the runaway, not noise:
 
 | State | CPU | Fan | Package | RAM used |
 |---|---|---|---|---|
-| Runaway (the fault) | 100% of a core | 4201 rpm | 85 C | — |
-| Stremio idle on dashboard | 1.4% | 0 rpm | 52 C | 4295 MB |
-| Stremio stopped (chosen) | 0.0% | 0 rpm | 48 C | 710 MB |
-| Whole session stopped | 0.0% | 0 rpm | 48 C | 623 MB |
+| Runaway (the fault) | 100% of a core | 4201 rpm | 85 °C | — |
+| Stremio idle on dashboard | 1.4% | 0 rpm | 52 °C | 4295 MB |
+| Stremio stopped (chosen) | 0.0% | 0 rpm | 48 °C | 710 MB |
+| Whole session stopped | 0.0% | 0 rpm | 48 °C | 623 MB |
 
-Stopping the entire session was rejected on those numbers: it buys 87 MB over
-just stopping Stremio, and costs the compositor, uxplay and — the deciding
-factor — the planned wayvnc service, which is most wanted precisely when the TV
-is off. It does not even stop urserver, which daemonises out of the session
-cgroup and keeps running regardless.
+Stopping the whole session was rejected on those numbers: 87 MB more, at the
+cost of the compositor, uxplay and the planned wayvnc service — which is wanted
+precisely when the TV is off.
 
 ## Next project: control the display from the laptop in a browser
 
@@ -160,9 +80,9 @@ laptop that shows the screen and drives it.
 ### Recommendation: wayvnc + noVNC
 
 wayvnc is the wlroots-native VNC server; noVNC (via websockify) puts it in a
-browser so no VNC client is needed. **The feasibility question was already
-checked** — the usual blocker is a kiosk compositor not exposing the protocols
-a VNC server needs, and Cage exposes all of them:
+browser so no VNC client is needed. **The feasibility question is already
+settled** — the usual blocker is a kiosk compositor not exposing the protocols
+a VNC server needs, and Cage creates all of them:
 
 ```
 wlr_screencopy_manager_v1_create        # screen capture
@@ -170,42 +90,37 @@ wlr_virtual_keyboard_manager_v1_create  # keyboard injection
 wlr_virtual_pointer_manager_v1_create   # pointer injection
 ```
 
-so wayvnc should get both view *and* input with no custom code. Everything is
-packaged in Debian trixie (`wayvnc 0.9.1-1`, `novnc 1:1.6.0-2`,
-`websockify 0.12.0`) and present in nixpkgs for when the flake goes live.
+so it should get both view *and* input with no custom code. All packaged in
+Debian trixie (`wayvnc 0.9.1-1`, `novnc 1:1.6.0-2`, `websockify 0.12.0`) and
+present in nixpkgs for when the flake goes live.
 
 Rough shape:
 
 1. `wayvnc` bound to localhost on 5900, started from `kiosk-wayland.sh` as
    another watchdogged helper (it needs `WAYLAND_DISPLAY`, like `grim`).
 2. `websockify` serving noVNC on 6080 → `http://htpc.local:6080/vnc.html`.
-3. Open 6080 in the firewall (and 5900 only if a native client is wanted).
+3. Open 6080 in the firewall (5900 only if a native client is wanted).
 4. Mirror into the flake: packages, the kiosk script, firewall ports.
 
 Things to decide or watch:
 
 - **Auth.** wayvnc supports TLS and username/password but needs a cert and a
-  credentials file. Even on the LAN this is a service that grants full control
-  of the box, so it should not be wide open — and the secret belongs in agenix
-  rather than the repo.
-- **Performance.** Fine for driving the UI; do not expect to watch video
-  through it. Damage-tracked screencopy over Wi-Fi at 1080p is adequate for
-  clicking around, no more. Consider capping the frame rate.
-- **Injection path is independent** of `urclick-fix`: wayvnc injects at the
-  compositor level via the virtual-pointer/keyboard protocols, not through
-  `/dev/uinput`, so the two cannot conflict.
-- **Cage's clipboard.** Cage never creates a data-control manager and only
-  hands the selection to the focused client, so `wl-copy`/`wl-paste` do not
-  work here at all (verified — `wl-paste` returns nothing). Do not plan on
-  copy/paste between laptop and box via the clipboard; noVNC's own clipboard
-  panel goes through the VNC protocol and may work, but it is untested.
+  credentials file. This grants full control of the box, so it should not be
+  open even on the LAN — and the secret belongs in agenix, not the repo.
+- **Performance.** Fine for driving the UI; not for watching video through.
+  Consider capping the frame rate.
+- **Injection is independent of `urclick-fix`** — wayvnc injects at the
+  compositor level, not through `/dev/uinput`, so the two cannot conflict.
+- **Do not rely on the clipboard** for laptop↔box copy/paste; see the note in
+  `kiosk-wayland.sh`. noVNC's own clipboard panel goes over the VNC protocol
+  and may work, but is untested.
 
 ### Alternatives considered
 
 | Option | Verdict |
 |---|---|
 | **wayvnc + noVNC** | Recommended. Standard, packaged, browser-native, view + input, no custom code. |
-| Custom web pad over `/dev/uinput` | Viable fallback and very light — a control pad plus periodic `grim` screenshots. Only worth it if wayvnc's input path disappoints, since it is code to maintain. The uinput approach is proven on this box. |
+| Custom web pad over `/dev/uinput` | Viable fallback and very light — a control pad plus periodic `grim` screenshots. Only worth it if wayvnc's input path disappoints. The uinput approach is proven on this box. |
 | Sunshine + Moonlight | Built for game streaming. Better video, but not browser-based and far more than this needs. |
 | `wlrctl` / a thin HTTP wrapper | Simplest possible, but gives no view of the screen — which is most of the point. |
 
@@ -216,30 +131,24 @@ Things to decide or watch:
   `ssh htpc "XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 grim /tmp/s.png"`
   then `scp htpc:/tmp/s.png .`
 - Logs: `/tmp/stremio.log`, `/tmp/cage.log`, `journalctl -t uxplay`,
-  `journalctl -t urclick-fix`, `~/.urserver/urserver.log`
+  `journalctl -t urclick-fix`, `journalctl -t kanshi`,
+  `journalctl -t tv-off-hook`, `~/.urserver/urserver.log`
 - Restart the kiosk: `sudo systemctl restart getty@tty1`
 - Unified Remote: iOS app, or `http://htpc.local:9530/client/`
-- Driving the UI headlessly is awkward without a keyboard on the box. Two traps
-  worth knowing if you script it again: libinput applies pointer acceleration
-  so *relative* motion cannot target precisely — use an absolute device
-  (`ABS_X`/`ABS_Y` + `INPUT_PROP_DIRECT`) — and the kernel silently discards
-  events for any key code not declared with `UI_SET_KEYBIT` before
-  `UI_DEV_CREATE`, so a partially-declared device types only some characters
-  and drops the rest with no error anywhere.
+- Force a TV hotplug for testing: `echo off` then `echo detect` into
+  `/sys/class/drm/*-HDMI-*/status` (blanks the TV briefly).
 
 ## Known risks / open items
 
 - **The flake is still not applied.** `hosts/htpc/hardware.nix` is a
   placeholder, so it cannot be installed as-is. The urserver derivation should
-  now build, but has not been built — no x86_64-linux machine to try it on.
+  now build, but has not been — no x86_64-linux machine to try it on.
+- **The runaway can still happen with the TV on.** The TV-off hook only covers
+  the TV-off case. If it recurs on a live TV, that is the signal a different
+  guard is needed — but a CPU-threshold watchdog risks killing real playback,
+  so wait for evidence before adding one.
 - **The Stremio flatpak auto-updates**, and a release could regress. The
   session self-respawns, so a bad update shows as a black or missing UI rather
-  than a crash loop. `--no-window-decorations` and the uxplay flags are all
-  upstream-supported.
-- **Wi-Fi credentials** are still not codified — agenix or a one-time `nmcli`
+  than a crash loop.
+- **Wi-Fi credentials** are still not codified — agenix, or a one-time `nmcli`
   after install.
-- **urserver is pinned to a build upstream will eventually delete.** They
-  garbage-collect old builds, which is what broke the previous pin. If the
-  fetch 404s, that means "find the new build", not "the hash is wrong": resolve
-  `https://www.unifiedremote.com/download/linux-x64-portable` and
-  `nix-prefetch-url` the target.
